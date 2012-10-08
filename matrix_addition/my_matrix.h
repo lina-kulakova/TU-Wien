@@ -1,22 +1,18 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
+#include <vector>
 
 using std::cerr;
 using std::endl;
 using std::ostream;
 using std::size_t;
+using std::vector;
 
 template <typename T>
 class my_matrix_temporary;
-
-template <typename T>
-class my_list;
-
-template <typename T>
-class my_list_node;
-
 
 ////////////////////////////////////////////////
 //           class my_matrix
@@ -29,6 +25,7 @@ private:
   size_t n_rows;     // number of rows
   size_t n_cols;     // number of columns
   T *data;           // matrix elements
+  static const size_t MAX_MATRIX_SIZE = 150;
 
 public:
   my_matrix ()
@@ -122,7 +119,7 @@ inline my_matrix<T> &my_matrix<T>::operator= (const my_matrix<T> &b)
 
   n_rows = b.n_rows;
   n_cols = b.n_cols;
-  *data = *b.data;
+  memcpy (data, b.data, n_rows * n_cols * sizeof (T));
   return *this;
 }
 
@@ -130,15 +127,29 @@ inline my_matrix<T> &my_matrix<T>::operator= (const my_matrix<T> &b)
 template <typename T>
 inline my_matrix<T> &my_matrix<T>::operator= (my_matrix_temporary<T> &b)
 {
-  my_list_node< my_matrix<T> > *it;
-  for (size_t i = 0; i < n_rows; ++i)
-    for (size_t j = 0; j < n_cols; ++j)
-      {
-        T s = 0;
-        for (it = b.matrix_list.begin; it != 0; it = it->next)
-          s += it->data.data[i * n_cols + j];
-        data[i * n_cols + j] = s;
-      }
+  if (n_cols < MAX_MATRIX_SIZE || n_rows < MAX_MATRIX_SIZE)
+    {
+      memcpy (data, b.matrices[0]->data, n_rows * n_cols * sizeof (T));
+      for (size_t k = 1; k < b.matrices.size (); ++k)
+        {
+          T *b_data = b.matrices[k]->data;
+          for (size_t i = 0; i < n_rows; ++i)
+            for (size_t j = 0; j < n_cols; ++j)
+              data[i * n_cols + j] += b_data[i * n_cols + j];
+        }
+    }
+  else
+    {
+      vector <const my_matrix<T>*> matrices = b.matrices;
+      for (size_t i = 0; i < n_rows; ++i)
+        for (size_t j = 0; j < n_cols; ++j)
+          {
+            T s = 0;
+            for (size_t k = 0; k < matrices.size (); ++k)
+              s += matrices[k]->data[i * n_cols + j];
+            data[i * n_cols + j] = s;
+          }
+    }
 
   return *this;
 }
@@ -153,78 +164,21 @@ template <typename T>
 class my_matrix_temporary
 {
 private:
-  my_list< my_matrix<T> > matrix_list;
+  vector< const my_matrix<T>* > matrices;
 
 public:
   my_matrix_temporary (const my_matrix<T> &a, const my_matrix<T> &b)
   {
-    matrix_list.insert (a);
-    matrix_list.insert (b);
+    matrices.push_back (&a);
+    matrices.push_back (&b);
   }
 
   my_matrix_temporary<T> &operator+ (const my_matrix<T> &b)
   {
-    matrix_list.insert (b);
+    matrices.push_back (&b);
     return *this;
   }
 
   friend class my_matrix<T>;
 };
 
-
-
-////////////////////////////////////////////////
-//         class my_list_node
-////////////////////////////////////////////////
-
-template <typename T>
-class my_list_node
-{
-public:
-  const T &data;
-  my_list_node<T> *next;
-
-public:
-  my_list_node (const T &data_arg)
-    : data (data_arg), next (0) { }
-};
-
-
-
-////////////////////////////////////////////////
-//         class my_list
-////////////////////////////////////////////////
-
-template <typename T>
-class my_list
-{
-public:
-  my_list_node<T> *begin;
-
-public:
-  my_list ()
-    : begin (0) { }
-
-  ~my_list ()
-  {
-    my_list_node<T> *it, *next;
-    for (it = begin, next = begin->next; it != 0; it = next)
-      {
-        next = it->next;
-        delete it;
-      }
-  }
-
-  void insert (const T& new_data)
-  {
-    my_list_node<T> *new_node = new my_list_node<T> (new_data);
-    if (begin)
-      {
-        my_list_node<T> *next = begin->next;
-        begin->next = new_node;
-        new_node->next = next;
-      }
-    else
-      begin = new_node;
-  }
-};
