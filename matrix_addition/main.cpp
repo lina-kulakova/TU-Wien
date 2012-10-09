@@ -3,8 +3,6 @@
 
 #include "my_matrix.h"
 
-using std::cout;
-
 int main ()
 {
   typedef double NumericType;
@@ -46,14 +44,14 @@ int main ()
               m1(i,j) = m2(i,j) + m3(i,j) + m4(i,j) + m5(i,j);
         }
       t = clock () - t;
-      //  cout << m1 << endl;
+//      cout << m1 << endl;
       cout << "Elapsed time ('for' loop): " << t / CLOCKS_PER_SEC << endl;
 
       t = clock ();
       for (k = 0; k < k_max[it]; ++k)
         m1 = m2 + m3 + m4 + m5;
       t = clock () - t;
-      //  cout << m1 << endl;
+//      cout << m1 << endl;
       cout << "Elapsed time (my_matrix):  " << t / CLOCKS_PER_SEC << endl;
 
       cout << endl;
