@@ -1,8 +1,5 @@
 
-#include <ctime>
-
 #include "my_matrix.h"
-
 
 int main ()
 {

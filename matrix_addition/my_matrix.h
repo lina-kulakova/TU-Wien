@@ -1,9 +1,5 @@
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <iostream>
-#include <vector>
 
 using std::cerr;
 using std::cin;
@@ -11,7 +7,6 @@ using std::cout;
 using std::endl;
 using std::ostream;
 using std::size_t;
-using std::vector;
 
 template <typename T, size_t size>
 class my_matrix_temporary;
