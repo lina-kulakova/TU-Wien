@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <vector>
 
 using std::cerr;
 using std::cin;
@@ -8,64 +9,61 @@ using std::endl;
 using std::ostream;
 using std::size_t;
 
-template <typename T, size_t size>
-class my_matrix_temporary;
+template <typename E1, typename E2, typename T>
+class matrix_sum;
 
-////////////////////////////////////////////////
-//           class my_matrix
-////////////////////////////////////////////////
-
-template <typename T>
-class my_matrix
+template <typename E, typename T>
+class matrix_expression   // base class for one matrix or matrices sum
 {
 public:
-  size_t n_rows;     // number of rows
-  size_t n_cols;     // number of columns
+  T operator[] (size_t i) const { return static_cast<E const&> (*this)[i]; }
+
+  size_t get_n_cols () const { return static_cast<E const&> (*this).get_n_cols (); }
+  size_t get_n_rows () const { return static_cast<E const&> (*this).get_n_rows (); }
+
+  operator E& () { return static_cast<E&> (*this); }
+  operator E const& () const { return static_cast<const E&> (*this); }
+};
+
+
+template <typename T>
+class my_matrix : public matrix_expression<my_matrix<T>, T>
+{
+private:
   T *data;
+  size_t n_cols;
+  size_t n_rows;
 
 public:
-  my_matrix (size_t n_rows_arg, size_t n_cols_arg)
-    : n_rows (n_rows_arg), n_cols (n_cols_arg)
-  {
-    data = new (std::nothrow) T [n_rows * n_cols];
-    if (!data)
-      {
-        cerr << "Error: not enough memory." << endl;
-        abort ();
-      }
-  }
+   my_matrix (size_t cols, size_t rows)
+     : n_cols (cols), n_rows (rows)
+   {
+     data = new (std::nothrow) T [n_cols * n_rows];
+     if (!data)
+       {
+         cerr << "Not enough memory!" << endl;
+         abort ();
+       }
+   }
 
-  ~my_matrix ()
-  {
-    delete [] data;
-  }
+   ~my_matrix () { delete [] data; }
 
-  T& operator() (size_t i, size_t j)
-  {
-    return data[i * n_cols + j];
-  }
+   T& operator[] (size_t i) { return data[i]; }
+   T operator[] (size_t i) const { return data[i]; }
+   T& operator() (size_t i, size_t j) { return data[i * n_cols + j]; }
+   T operator() (size_t i, size_t j) const { return data[i * n_cols + j]; }
 
-  T operator() (size_t i, size_t j) const
-  {
-    return data[i * n_cols + j];
-  }
+   size_t get_n_cols () const { return n_cols; }
+   size_t get_n_rows () const { return n_rows; }
 
-  template<size_t size>
-  my_matrix_temporary<T, size> operator+ (const my_matrix<T> &b)
+  template <typename E>
+  my_matrix<T> &operator= (const matrix_expression<E, T> &matrix_expr)
   {
-    return my_matrix_temporary<T, size> (*this, b);
-  }
+    if (n_cols != matrix_expr.get_n_cols () || n_rows != matrix_expr.get_n_rows ())
+      abort ();
 
-  template<size_t size, size_t matrix_size>
-  my_matrix<T> &operator= (const my_matrix_temporary<T, size> &a)
-  {
-    for (size_t i = 0; i < matrix_size; ++i)
-      {
-        T s = 0;
-        for (size_t k = 0; k < size; ++k)
-          s += (a.summands[k])[i];
-        data[i] = s;
-      }
+    for (size_t i = 0; i < n_cols * n_rows; ++i)
+      data[i] = matrix_expr[i];
     return *this;
   }
 
@@ -83,32 +81,31 @@ public:
 };
 
 
-
-////////////////////////////////////////////////
-//           class my_matrix_temporary
-////////////////////////////////////////////////
-
-template<typename T, size_t size>
-class my_matrix_temporary
+template <typename E1, typename E2, typename T>
+class matrix_sum : public matrix_expression<matrix_sum<E1, E2, T>, T>
 {
-public:
-  T *summands[size];
-  size_t current_size;
+private:
+  E1 const &u;
+  E2 const &v;
 
 public:
-  my_matrix_temporary (const my_matrix<T> &a, const my_matrix<T> &b)
+  matrix_sum (matrix_expression<E1, T> const &u_arg, matrix_expression<E2, T> const &v_arg)
+    : u (u_arg), v (v_arg)
   {
-    if (b.n_cols != a.n_cols || b.n_rows != a.n_rows)
+    if (u.get_n_cols () != v.get_n_cols () || u.get_n_rows () != v.get_n_rows ())
       abort ();
-
-    summands[0] = a.data;
-    summands[1] = b.data;
-    current_size = 2;
   }
 
-  my_matrix_temporary<T, size> operator+ (const my_matrix<T> &b)
-  {
-    summands[current_size++] = b.data;
-    return *this;
-  }
+  size_t get_n_cols () const { return v.get_n_cols (); }
+  size_t get_n_rows () const { return v.get_n_rows (); }
+
+  T operator[] (size_t i) const { return u[i] + v[i]; }
 };
+
+
+template <typename E1, typename E2, typename T>
+matrix_sum<E1, E2, T> operator+ (matrix_expression<E1, T> const &u,
+                                 matrix_expression<E2, T> const &v)
+{
+   return matrix_sum<E1, E2, T> (u,v);
+}
