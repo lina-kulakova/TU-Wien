@@ -1,0 +1,74 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{vmargin}
+
+\pagestyle{empty}
+
+\oddsidemargin=50pt
+\topmargin=0pt
+\setpapersize[landscape]{A4}
+
+\begin{document}
+
+\bf
+Row memory layout\\
+\rm
+
+\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+\hline
+size & 10 & 20 & 30 & 40 & 50 & 60 & 70 & 80 & 90 & 100 & 200 & 300 \\
+\hline
+`for' loop time (sec) & 2.7e-7 & 1.0e-6 & 2.7e-6 & 5.0e-6 & 7.0e-6 & 1.1e-5 & 1.4e-5 &
+1.9e-5 & 2.4e-5 & 3.4e-5 & 5.2e-4 & 1.3e-3 \\
+instructions per cycle & 0.94 & 0.93 & 0.88 & 0.90 & 0.89 & 0.91 & 0.91 & 0.89 & 0.90 & 0.91 & 0.80 & 0.79\\
+\hline
+template time (sec) & 2.7e-7 & 1.1e-6 & 3.0e-6 & 5.4e-6 & 8.7e-6 & 1.2e-5 & 1.7e-5 &
+2.2e-5 & 2.8e-5 & 3.8e-5 & 5.2e-4 & 1.3e-3 \\
+instructions per cycle & 0.89 & 0.93 & 0.88 & 0.93 & 0.88 & 0.91 & 0.86 & 0.85 & 0.84 & 0.82 & 0.57 & 0.53\\
+\hline
+\hline
+size & 400 & 500 & 600 & 700 & 800 & 900 & 1000 & 2000 & 3000 & 4000 & 5000 & 6000 \\
+\hline
+`for' loop time (sec) & 2.4e-3 & 3.7e-3 & 7.3e-3 & 9.8e-3 & 1.2e-2 & 1.6e-2 & 1.8e-2 &
+7.2e-2 & 1.8e-1 & 3.5e-1 & 3.4e-1 & 4.3e-1 \\
+instructions per cycle & 0.75 & 0.77 & 0.69 & 0.77 & 0.78 & 0.78 & 0.79 & 0.77 & 0.81 & 0.76 & 0.78 & 0.78 \\
+\hline
+template time (sec) & 4.8e-3 & 3.8e-3 & 5.3e-3 & 7.3e-3 & 9.6e-3 & 1.2e-2 & 1.4e-2 &
+5.6e-2 & 1.2e-1 & 2.2e-1 & 3.3e-1 & 4.3e-1 \\
+instructions per cycle & 0.52 & 0.51 & 0.49 & 0.50 & 0.51 & 0.50 & 0.50 & 0.51 & 0.51 & 0.50 & 0.50 & 0.50 \\
+\hline
+\end{tabular}\\
+
+\vspace{1cm}
+\bf
+Column memory layout\\
+\rm
+
+\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+\hline
+size & 10 & 20 & 30 & 40 & 50 & 60 & 70 & 80 & 90 & 100 & 200 & 300 \\
+\hline
+`for' loop time (sec) / & 4.2e-7 & 1.3e-6 & 3.1e-6 & 6.2e-6 & 9.3e-6 & 1.4e-5 & 1.9e-5 &
+3.8e-5 & 4.7e-5 & 7.6e-5 & 8.7e-4 & 2.8e-3 \\
+instructions per cycle & 0.93 & 0.91 & 0.89 & 0.87 & 0.90 & 0.90 & 0.86 & 0.79 & 0.80 & 0.79 & 0.38 & 0.29\\
+\hline
+template time (sec) / & 2.8e-7 & 1.1e-6 & 3.0e-6 & 5.6e-6 & 8.6e-6 & 1.3e-5 & 1.7e-5 &
+2.4e-5 & 2.9e-5 & 3.7e-5 & 4.9e-4 & 1.3e-3 \\
+instructions per cycle & 0.94 & 0.94 & 0.86 & 0.89 & 0.88 & 0.86 & 0.88 & 0.82 & 0.83 & 0.79 & 0.39 & 0.30\\
+\hline
+\hline
+size & 400 & 500 & 600 & 700 & 800 & 900 & 1000 & 2000 & 3000 & 4000 & 5000 & 6000 \\
+\hline
+`for' loop time (sec) / & 6.1e-3 & 1.0e-2 & 1.7e-2 & 2.3e-2 & 7.4e-2 & 4.5e-2 & 6.3e-2 &
+7.5e-1 & 2.7e+0 & 4.5e+0 & 9.6 & 16.6 \\
+instructions per cycle & 0.25 & 0.24 & 0.20 & 0.19 & 0.08 & 0.16 & 0.16 & 0.07 & 0.05 & 0.05 &
+0.04 & 0.03\\
+\hline
+template time (sec) / & 2.4e-3 & 3.7e-3 & 5.2e-3 & 7.2e-3 & 9.2e-3 & 1.2e-2 & 1.5e-2 &
+5.8e-2 & 1.3e-1 & 2.1e-1 & 3.3e-1 & 4.6e-1 \\
+instructions per cycle & 0.25 & 0.25 & 0.22 & 0.23 & 0.11 & 0.20 & 0.18 & 0.07 & 0.06 & 0.06 &
+0.05 & 0.05\\
+\hline
+\end{tabular}
+
+\end{document}
