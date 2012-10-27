@@ -1,2 +1,4 @@
 *.o
 *.out
+matrix_addition/cycles*
+matrix_addition/instructions*

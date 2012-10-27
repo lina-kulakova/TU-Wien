@@ -52,6 +52,8 @@ public:
    T operator[] (size_t i) const { return data[i]; }
    T& operator() (size_t i, size_t j) { return data[i * n_cols + j]; }
    T operator() (size_t i, size_t j) const { return data[i * n_cols + j]; }
+//   T& operator() (size_t i, size_t j) { return data[j * n_rows + i]; }
+//   T operator() (size_t i, size_t j) const { return data[j * n_rows + i]; }
 
    size_t get_n_cols () const { return n_cols; }
    size_t get_n_rows () const { return n_rows; }
