@@ -15,8 +15,7 @@ void add_matrices_loop (my_matrix<NumericType> &m1, my_matrix<NumericType> &m2, 
     }
   t = clock () - t;
 //  cout << m1 << endl;
-//  cout << "Elapsed time ('for' loop): " << t / (k_max * CLOCKS_PER_SEC) << endl;
-  printf ("Elapsed time ('for' loop): %.2le\n", t / (k_max * CLOCKS_PER_SEC));
+  printf (Elapsed time ('for' loop): "%.2le\n", t / CLOCKS_PER_SEC / k_max);
 }
 
 void add_matrices_template (my_matrix<NumericType> &m1, my_matrix<NumericType> &m2, my_matrix<NumericType> &m3,
@@ -27,8 +26,7 @@ void add_matrices_template (my_matrix<NumericType> &m1, my_matrix<NumericType> &
     m1 = m2 + m3 + m4 + m5;
   t = clock () - t;
 //      cout << m1 << endl;
-//      cout << "Elapsed time (my_matrix):  " << t / (k_max * CLOCKS_PER_SEC) << endl;
-  printf ("Elapsed time (my_matrix): %.2le\n", t / (k_max * CLOCKS_PER_SEC));
+  printf ("Elapsed time (my_matrix): %.2le\n", t / CLOCKS_PER_SEC / k_max);
 }
 
 
