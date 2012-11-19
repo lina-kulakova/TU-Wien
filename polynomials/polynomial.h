@@ -1,15 +1,12 @@
 #include <iostream>
-#include <tuple>
+#include <utility>
 
-using std::cout;
-using std::endl;
 using std::ostream;
 
-
-template<class... Types>
-  std::tuple<Types...>tuple (Types&&... args)
+template <class T1, class T2>
+std::pair<T1,T2> tuple (T1 x, T2 y)
 {
-  return std::make_tuple (args...);
+  return std::make_pair (x, y);
 }
 
 template <typename E>
@@ -160,41 +157,41 @@ diff (polynomial_prod<E1, E2> prod, variable<N> var)
   return diff_prod<E1, E2, N> (prod.u, prod.v, var);
 }
 
-template <int N, class... Types>
-int evaluate (variable<N> var, std::tuple<Types...> t)
+template <int N, typename T1, typename T2>
+int evaluate (variable<N> var, std::pair<T1, T2> t)
 {
   (void) var;
-  return (std::get<N> (t)).value;
+  return N ? t.second.value : t.first.value;
 }
 
-template <int N, class... Types>
-int evaluate (scalar<N> s, std::tuple<Types...> t)
+template <int N, typename T1, typename T2>
+int evaluate (scalar<N> s, std::pair<T1, T2> t)
 {
   (void) t;
   return s.value;
 }
 
-template <typename E1, typename E2, class... Types>
-int evaluate (polynomial_sum<E1, E2> sum, std::tuple<Types...> t)
+template <typename E1, typename E2, typename T1, typename T2>
+int evaluate (polynomial_sum<E1, E2> sum, std::pair<T1, T2> t)
 {
   return evaluate (sum.u, t) + evaluate (sum.v, t);
 }
 
-template <typename E1, typename E2, class... Types>
-int evaluate (polynomial_prod<E1, E2> prod, std::tuple<Types...> t)
+template <typename E1, typename E2, typename T1, typename T2>
+int evaluate (polynomial_prod<E1, E2> prod, std::pair<T1, T2> t)
 {
   return evaluate (prod.u, t) * evaluate (prod.v, t);
 }
 
-template <typename E1, typename E2, int N, class... Types>
-int evaluate (diff_sum<E1, E2, N> d_sum, std::tuple<Types...> t)
+template <typename E1, typename E2, int N, typename T1, typename T2>
+int evaluate (diff_sum<E1, E2, N> d_sum, std::pair<T1, T2> t)
 {
   return evaluate (diff (d_sum.u, d_sum.var), t) +
          evaluate (diff (d_sum.v, d_sum.var), t);
 }
 
-template <typename E1, typename E2, int N, class... Types>
-int evaluate (diff_prod<E1, E2, N> d_prod, std::tuple<Types...> t)
+template <typename E1, typename E2, int N, typename T1, typename T2>
+int evaluate (diff_prod<E1, E2, N> d_prod, std::pair<T1, T2> t)
 {
   return evaluate (diff (d_prod.u, d_prod.var), t) *
          evaluate (d_prod.v, t) +
