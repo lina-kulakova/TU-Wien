@@ -5,7 +5,7 @@
 
 int main ()
 {
-  size_t n = 300, m = 400, p = 500;
+  size_t n = 1000, m = 1000, p = 1000;
   my_matrix<double> A(n,m), B(m,p), C(n,p);
 
   // fill matrices
