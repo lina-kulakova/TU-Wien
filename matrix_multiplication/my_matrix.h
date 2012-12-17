@@ -10,8 +10,9 @@ using std::ostream;
 using std::size_t;
 
 #define BLOCK_SIZE 80
-#define TEST 0
-#define MULT1 0
+#define BLOCK_MULT 1
+#define BLOCK_BLOCK_MULT 1
+#define UNROLLED 1
 
 template <typename T>
 class my_matrix
@@ -35,9 +36,20 @@ public:
          abort();
        }
      memset(data, 0, n_cols * n_rows * sizeof (T));
-     for (size_t index = 0; index < n_cols * n_rows; ++index)
+     size_t index;
+     for (index = 0; index < ((n_cols * n_rows) & 7); ++index)
        indices[index] = index;
-//     memset(indices, -1, n_cols * n_rows * sizeof (size_t));
+     for ( ; index < n_cols * n_rows; index += 8)
+       {
+         indices[index] = index;
+         indices[index + 1] = index + 1;
+         indices[index + 2] = index + 2;
+         indices[index + 3] = index + 3;
+         indices[index + 4] = index + 4;
+         indices[index + 5] = index + 5;
+         indices[index + 6] = index + 6;
+         indices[index + 7] = index + 7;
+       }
    }
 
    ~my_matrix()
@@ -109,7 +121,7 @@ my_matrix<T> operator* (my_matrix<T> const &a,
   my_matrix<T> c (a_rows, b_cols);
 
   size_t a_cols = a.get_n_cols();
-#if !TEST
+#if BLOCK_MULT
   size_t m = BLOCK_SIZE;
   size_t i, j, k, m1, m2, m3;
   // loop over matrix rows
@@ -143,6 +155,7 @@ my_matrix<T> operator* (my_matrix<T> const &a,
 }
 
 template <typename T>
+inline
 void multiply_and_add_blocks(
   my_matrix<T> const &a, my_matrix<T> const &b, my_matrix<T> &c,
   size_t mi, size_t mj, size_t mk,
@@ -155,14 +168,14 @@ void multiply_and_add_blocks(
   size_t indb2 = mj;
   size_t indc1 = mi;
   size_t indc2 = mj;
-#if MULT1
+#if !BLOCK_BLOCK_MULT
   for (size_t i = 0; i < m; ++i)
     for (size_t j = 0; j < p; ++j)
       for (size_t k = 0; k < n; ++k)
         c(indc1 + i, indc2 + j) += a(inda1 + i, inda2 + k) *
                                    b(indb1 + k, indb2 + j);
 #else
-  size_t i, j, k;
+  size_t i, j, k, rest;
   T s00 = 0., s01 = 0., s10 = 0., s11 = 0.;
 
   // count c_ij
@@ -179,21 +192,53 @@ void multiply_and_add_blocks(
 
               if (p - j == 1)   // m3 = 1
                 {
-                  for (k = 0; k < n; k ++)
+#if UNROLLED
+                  rest = n & 3;
+#else
+                  rest = n;
+#endif
+                  for (k = 0; k < rest; ++k)
                     {
                       s00 += a(inda1 + i, inda2 + k)
                            * b(indb1 + k, indb2 + j);
+                    }
+                  for ( ; k < n; k += 4)
+                    {
+                      s00 += a(inda1 + i, inda2 + k)
+                           * b(indb1 + k, indb2 + j)
+                           + a(inda1 + i, inda2 + k + 1)
+                           * b(indb1 + k + 1, indb2 + j)
+                           + a(inda1 + i, inda2 + k + 2)
+                           * b(indb1 + k + 2, indb2 + j)
+                           + a(inda1 + i, inda2 + k + 3)
+                           * b(indb1 + k + 3, indb2 + j);
                     }
                   c(indc1 + i, indc2 + j) += s00;
                 }
               else   // m3 = 2
                 {
-                  for (k = 0; k < n; ++k)
+#if UNROLLED
+                  rest = n & 1;
+#else
+                  rest = n;
+#endif
+                  for (k = 0; k < rest; ++k)
                     {
                       s00 += a(inda1 + i, inda2 + k)
                            * b(indb1 + k, indb2 + j);
                       s01 += a(inda1 + i, inda2 + k)
                            * b(indb1 + k, indb2 + j + 1);
+                    }
+                  for ( ; k < n; k += 2)
+                    {
+                      s00 += a(inda1 + i, inda2 + k)
+                           * b(indb1 + k, indb2 + j)
+                           + a(inda1 + i, inda2 + k + 1)
+                           * b(indb1 + k + 1, indb2 + j);
+                      s01 += a(inda1 + i, inda2 + k)
+                           * b(indb1 + k, indb2 + j + 1)
+                           + a(inda1 + i, inda2 + k + 1)
+                           * b(indb1 + k + 1, indb2 + j + 1);
                     }
                   c(indc1 + i, indc2 + j) += s00;
                   c(indc1 + i, indc2 + j + 1) += s01;
@@ -211,12 +256,28 @@ void multiply_and_add_blocks(
 
               if (p - j == 1)   // m3 = 1
                 {
-                  for (k = 0; k < n; ++k)
+#if UNROLLED
+                  rest = n & 1;
+#else
+                  rest = n;
+#endif
+                  for (k = 0; k < rest; ++k)
                     {
                       s00 += a(inda1 + i, inda2 + k)
                            * b(indb1 + k, indb2 + j);
                       s10 += a(inda1 + i, inda2 + k + n)
                            * b(indb1 + k, indb2 + j);
+                    }
+                  for ( ; k < n; k += 2)
+                    {
+                      s00 += a(inda1 + i, inda2 + k)
+                           * b(indb1 + k, indb2 + j)
+                           + a(inda1 + i, inda2 + k + 1)
+                           * b(indb1 + k + 1, indb2 + j);
+                      s10 += a(inda1 + i, inda2 + k + n)
+                           * b(indb1 + k, indb2 + j)
+                           + a(inda1 + i, inda2 + k + 1 + n)
+                           * b(indb1 + k + 1, indb2 + j);
                     }
                   c(indc1 + i, indc2 + j) += s00;
                   c(indc1 + i, indc2 + j + p) += s10;
