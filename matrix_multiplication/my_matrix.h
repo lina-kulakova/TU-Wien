@@ -12,13 +12,60 @@ using std::size_t;
 #define BLOCK_SIZE 80
 #define BLOCK_MULT 1
 #define BLOCK_BLOCK_MULT 1
-#define UNROLLED 1
+#define UNROLLED 0
 
-template <typename T>
+void synchronize_threads (int total_threads)
+{
+  static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  static pthread_cond_t condvar_in = PTHREAD_COND_INITIALIZER;  
+  static pthread_cond_t condvar_out = PTHREAD_COND_INITIALIZER;
+  static int threads_in = 0;
+  static int threads_out = 0;
+  pthread_mutex_lock (&mutex);
+  threads_in++;
+  if (threads_in >= total_threads)
+    {
+      threads_out = 0;
+      pthread_cond_broadcast (&condvar_in);
+    }
+  else
+    {
+      while (threads_in < total_threads)
+        {
+          pthread_cond_wait (&condvar_in, &mutex);
+        }
+    }
+  threads_out++;
+  if (threads_out >= total_threads)
+    {
+      threads_in = 0;
+      pthread_cond_broadcast (&condvar_out);
+    }
+  else
+    {
+      while (threads_out < total_threads)
+        {
+          pthread_cond_wait (&condvar_out, &mutex);
+        }
+    }
+  pthread_mutex_unlock (&mutex);
+}
+
+
+void calc_thread_own_items (size_t total_threads, size_t thread_num,
+                            size_t total_item_count,
+                            size_t &first_item, size_t &last_item)
+{ 
+  first_item = (total_item_count * thread_num) / total_threads;
+  last_item = (total_item_count * (thread_num + 1)) / total_threads;
+}
+
+
+
 class my_matrix
 {
 private:
-  T *data;
+  double *data;
   size_t *indices; // indices[i] contains the index
                    // of i-th element of row layout in \code{data}
   size_t n_cols;
@@ -28,14 +75,14 @@ public:
    my_matrix(size_t rows, size_t cols)
      : n_cols(cols), n_rows(rows)
    {
-     data = new (std::nothrow) T [n_cols * n_rows];
+     data = new (std::nothrow) double [n_cols * n_rows];
      indices = new (std::nothrow) size_t [n_cols * n_rows];
      if (!data || !indices)
        {
          cerr << "Not enough memory!" << endl;
          abort();
        }
-     memset(data, 0, n_cols * n_rows * sizeof (T));
+     memset(data, 0, n_cols * n_rows * sizeof (double));
      size_t index;
      for (index = 0; index < ((n_cols * n_rows) & 7); ++index)
        indices[index] = index;
@@ -58,20 +105,20 @@ public:
      delete [] indices;
    }
 
-   T& operator() (size_t i, size_t j)
+   double& operator() (size_t i, size_t j)
    {
      return data[indices[i * n_cols + j]];
    }
 
-   T operator() (size_t i, size_t j) const
+   double operator() (size_t i, size_t j) const
    {
      return data[indices[i * n_cols + j]];
    }
 
    size_t get_n_cols() const { return n_cols; }
    size_t get_n_rows() const { return n_rows; }
-   T *get_data() const {return data; }
-   T *get_indices() const { return indices; }
+   double *get_data() const {return data; }
+   size_t *get_indices() const { return indices; }
 
    void set_index (size_t i, size_t j, size_t k)
    {
@@ -79,7 +126,7 @@ public:
    }
 
    // operator= makes row layout for lhs matrix
-   my_matrix<T> &operator= (const my_matrix<T> &rhs)
+   my_matrix &operator= (const my_matrix &rhs)
    {
      if (   n_cols != rhs.get_n_cols()
          || n_rows != rhs.get_n_rows())
@@ -95,7 +142,7 @@ public:
      return *this;
    }
 
-   friend ostream& operator<< (ostream& output, const my_matrix<T> &p)
+   friend ostream& operator<< (ostream& output, const my_matrix &p)
    {
      size_t i, j;
      for (i = 0; i < p.n_rows; i++)
@@ -109,55 +156,9 @@ public:
 };
 
 
-template <typename T>
-my_matrix<T> operator* (my_matrix<T> const &a,
-                        my_matrix<T> const &b)
-{
-  if (a.get_n_cols() != b.get_n_rows())
-    abort();
-
-  size_t a_rows = a.get_n_rows();
-  size_t b_cols = b.get_n_cols();
-  my_matrix<T> c (a_rows, b_cols);
-
-  size_t a_cols = a.get_n_cols();
-#if BLOCK_MULT
-  size_t m = BLOCK_SIZE;
-  size_t i, j, k, m1, m2, m3;
-  // loop over matrix rows
-  for(i = 0; i < a_rows; i += m)
-    {
-      m1 = (a_rows - i < m) ? a_rows - i : m;
-      // block a_{i,k} with m1 rows
-
-      // loop over matrix cols
-      for (j = 0; j < b_cols; j += m)
-        {
-          m3 = (b_cols - j < m) ? b_cols - j : m;
-          // block b_{k,j} with m3 columns
-
-          // make a \sum_{k=0}^{K} a_{i,k}*b_{k,j}
-          for (k = 0; k < a_cols; k += m)
-            {
-              m2 = (a_cols - k < m) ? a_cols - k : m;
-              // cols(a_{i,k}) = rows(b_{k,j}) = m2
-              multiply_and_add_blocks(a, b, c, i, j, k, m1, m2, m3);
-            }
-        }
-    }
-#else
-  for (size_t i = 0; i < a_rows; ++i)
-    for (size_t j = 0; j < b_cols; ++j)
-      for (size_t k = 0; k < a_cols; ++k)
-        c(i,j) += a(i,k) * b(k,j);
-#endif
-  return c;
-}
-
-template <typename T>
 inline
 void multiply_and_add_blocks(
-  my_matrix<T> const &a, my_matrix<T> const &b, my_matrix<T> &c,
+  my_matrix const &a, my_matrix const &b, my_matrix &c,
   size_t mi, size_t mj, size_t mk,
   size_t m, size_t n, size_t p
 )
@@ -176,7 +177,7 @@ void multiply_and_add_blocks(
                                    b(indb1 + k, indb2 + j);
 #else
   size_t i, j, k, rest;
-  T s00 = 0., s01 = 0., s10 = 0., s11 = 0.;
+  double s00 = 0, s01 = 0, s10 = 0, s11 = 0;
 
   // count c_ij
   for (i = 0; i < m; i += 2)  // loop over rows of a
@@ -305,4 +306,71 @@ void multiply_and_add_blocks(
     }
 #endif
 }
+
+
+
+struct args
+{
+  const my_matrix *a;
+  const my_matrix *b;
+  my_matrix *c;
+  size_t total_threads;
+  size_t thread_num;
+};
+
+
+void *mult_matrix_matrix (void *pargs)
+{
+  args *arguments = (args *) pargs;
+  my_matrix const &a = *(arguments->a);
+  my_matrix const &b = *(arguments->b);
+  my_matrix &c = *(arguments->c);
+  size_t total_threads = arguments->total_threads;
+  size_t thread_num = arguments->thread_num;
+
+  if (a.get_n_cols() != b.get_n_rows())
+    return 0; 
+
+  size_t a_rows = a.get_n_rows();
+  size_t b_cols = b.get_n_cols();
+  size_t a_cols = a.get_n_cols();
+#if BLOCK_MULT
+  size_t m = BLOCK_SIZE, n_blocks = (a_rows + m - 1) / m;
+  size_t i, j, k, m1, m2, m3, first_block, last_block, i_block;
+  // loop over matrix rows
+  calc_thread_own_items (total_threads, thread_num, n_blocks,
+                         first_block, last_block);
+  for (i_block = first_block; i_block < last_block; ++i_block)
+    {
+      i = i_block * m;
+      m1 = (a_rows - i < m) ? a_rows - i : m;
+      // block a_{i,k} with m1 rows
+
+      // loop over matrix cols
+      for (j = 0; j < b_cols; j += m)
+        {
+          m3 = (b_cols - j < m) ? b_cols - j : m;
+          // block b_{k,j} with m3 columns
+
+          // make a \sum_{k=0}^{K} a_{i,k}*b_{k,j}
+          for (k = 0; k < a_cols; k += m)
+            {
+              m2 = (a_cols - k < m) ? a_cols - k : m;
+              // cols(a_{i,k}) = rows(b_{k,j}) = m2
+              multiply_and_add_blocks(a, b, c, i, j, k, m1, m2, m3);
+            }
+        }
+    }
+#else
+  size_t first_row, last_row; 
+  calc_thread_own_items (total_threads, thread_num, a_rows,
+                         first_row, last_row);
+  for (size_t i = first_row; i < last_row; ++i)
+    for (size_t j = 0; j < b_cols; ++j)
+      for (size_t k = 0; k < a_cols; ++k)
+        c(i,j) += a(i,k) * b(k,j);
+#endif
+  return 0;
+}
+
 
