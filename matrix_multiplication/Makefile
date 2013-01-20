@@ -4,7 +4,7 @@ CFLAGS = -W -Wall -O3 -Wunused -Wfloat-equal -Wpointer-arith \
 	 -Wcast-align -Wno-long-long -Wcast-align -pedantic \
 	 -pedantic-errors -fstack-protector-all \
 	 -Wuninitialized -Wunused-but-set-variable \
-	 -Woverloaded-virtual -ffast-math
+	 -Woverloaded-virtual -ffast-math -funroll-loops
 CC = g++ -c -pthread
 LD = g++ -pthread
 OBJS = main.o

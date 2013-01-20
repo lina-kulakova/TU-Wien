@@ -82,21 +82,7 @@ public:
          cerr << "Not enough memory!" << endl;
          abort();
        }
-     memset(data, 0, n_cols * n_rows * sizeof (double));
-     size_t index;
-     for (index = 0; index < ((n_cols * n_rows) & 7); ++index)
-       indices[index] = index;
-     for ( ; index < n_cols * n_rows; index += 8)
-       {
-         indices[index] = index;
-         indices[index + 1] = index + 1;
-         indices[index + 2] = index + 2;
-         indices[index + 3] = index + 3;
-         indices[index + 4] = index + 4;
-         indices[index + 5] = index + 5;
-         indices[index + 6] = index + 6;
-         indices[index + 7] = index + 7;
-       }
+     set_to_zero();
    }
 
    ~my_matrix()
@@ -124,6 +110,24 @@ public:
    {
      indices[i * n_cols + j] = k;
    }
+   void set_to_zero ()
+   {
+     memset(data, 0, n_cols * n_rows * sizeof(double));
+     size_t index;
+     for (index = 0; index < ((n_cols * n_rows) & 7); ++index)
+       indices[index] = index;
+     for ( ; index < n_cols * n_rows; index += 8)
+       {
+         indices[index] = index;
+         indices[index + 1] = index + 1;
+         indices[index + 2] = index + 2;
+         indices[index + 3] = index + 3;
+         indices[index + 4] = index + 4;
+         indices[index + 5] = index + 5;
+         indices[index + 6] = index + 6;
+         indices[index + 7] = index + 7;
+       }
+   }
 
    // operator= makes row layout for lhs matrix
    my_matrix &operator= (const my_matrix &rhs)
@@ -145,9 +149,11 @@ public:
    friend ostream& operator<< (ostream& output, const my_matrix &p)
    {
      size_t i, j;
-     for (i = 0; i < p.n_rows; i++)
+     size_t rows = p.n_rows < 8 ? p.n_rows : 8;
+     size_t cols = p.n_cols < 8 ? p.n_cols : 8;
+     for (i = 0; i < rows; i++)
        {
-         for (j = 0; j < p.n_cols; j++)
+         for (j = 0; j < cols; j++)
            output << p(i, j) << " ";
          output << endl;
        }
@@ -158,23 +164,16 @@ public:
 
 inline
 void multiply_and_add_blocks(
-  my_matrix const &a, my_matrix const &b, my_matrix &c,
-  size_t mi, size_t mj, size_t mk,
+  const double *a, const double *b, double *c,
   size_t m, size_t n, size_t p
 )
 {
-  size_t inda1 = mi;
-  size_t inda2 = mk;
-  size_t indb1 = mk;
-  size_t indb2 = mj;
-  size_t indc1 = mi;
-  size_t indc2 = mj;
+  memset(c, 0, m * p * sizeof(double));
 #if !BLOCK_BLOCK_MULT
   for (size_t i = 0; i < m; ++i)
     for (size_t j = 0; j < p; ++j)
       for (size_t k = 0; k < n; ++k)
-        c(indc1 + i, indc2 + j) += a(inda1 + i, inda2 + k) *
-                                   b(indb1 + k, indb2 + j);
+        c[i * p + j] += a[i * n + k] * b[k * p + j];
 #else
   size_t i, j, k, rest;
   double s00 = 0, s01 = 0, s10 = 0, s11 = 0;
@@ -200,21 +199,16 @@ void multiply_and_add_blocks(
 #endif
                   for (k = 0; k < rest; ++k)
                     {
-                      s00 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j);
+                      s00 += a[i * n + k] * b[k * p + j];
                     }
                   for ( ; k < n; k += 4)
                     {
-                      s00 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j)
-                           + a(inda1 + i, inda2 + k + 1)
-                           * b(indb1 + k + 1, indb2 + j)
-                           + a(inda1 + i, inda2 + k + 2)
-                           * b(indb1 + k + 2, indb2 + j)
-                           + a(inda1 + i, inda2 + k + 3)
-                           * b(indb1 + k + 3, indb2 + j);
+                      s00 += a[i * n + k    ] * b[ k      * p + j]
+                           + a[i * n + k + 1] * b[(k + 1) * p + j]
+                           + a[i * n + k + 2] * b[(k + 2) * p + j]
+                           + a[i * n + k + 3] * b[(k + 3) * p + j];
                     }
-                  c(indc1 + i, indc2 + j) += s00;
+                  c[i * p + j] += s00;
                 }
               else   // m3 = 2
                 {
@@ -225,24 +219,18 @@ void multiply_and_add_blocks(
 #endif
                   for (k = 0; k < rest; ++k)
                     {
-                      s00 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j);
-                      s01 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j + 1);
+                      s00 += a[i * n + k] * b[k * p + j    ];
+                      s01 += a[i * n + k] * b[k * p + j + 1];
                     }
                   for ( ; k < n; k += 2)
                     {
-                      s00 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j)
-                           + a(inda1 + i, inda2 + k + 1)
-                           * b(indb1 + k + 1, indb2 + j);
-                      s01 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j + 1)
-                           + a(inda1 + i, inda2 + k + 1)
-                           * b(indb1 + k + 1, indb2 + j + 1);
+                      s00 += a[i * n + k    ] * b[ k      * p + j    ]
+                           + a[i * n + k + 1] * b[(k + 1) * p + j    ];
+                      s01 += a[i * n + k    ] * b[ k      * p + j + 1]
+                           + a[i * n + k + 1] * b[(k + 1) * p + j + 1];
                     }
-                  c(indc1 + i, indc2 + j) += s00;
-                  c(indc1 + i, indc2 + j + 1) += s01;
+                  c[i * p + j    ] += s00;
+                  c[i * p + j + 1] += s01;
                 }
             }
         }
@@ -264,42 +252,32 @@ void multiply_and_add_blocks(
 #endif
                   for (k = 0; k < rest; ++k)
                     {
-                      s00 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j);
-                      s10 += a(inda1 + i, inda2 + k + n)
-                           * b(indb1 + k, indb2 + j);
+                      s00 += a[i * n + k    ] * b[k * p + j];
+                      s10 += a[i * n + k + n] * b[k * p + j];
                     }
                   for ( ; k < n; k += 2)
                     {
-                      s00 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j)
-                           + a(inda1 + i, inda2 + k + 1)
-                           * b(indb1 + k + 1, indb2 + j);
-                      s10 += a(inda1 + i, inda2 + k + n)
-                           * b(indb1 + k, indb2 + j)
-                           + a(inda1 + i, inda2 + k + 1 + n)
-                           * b(indb1 + k + 1, indb2 + j);
+                      s00 += a[i * n + k        ] * b[ k      * p + j]
+                           + a[i * n + k + 1    ] * b[(k + 1) * p + j];
+                      s10 += a[i * n + k + n    ] * b[ k      * p + j]
+                           + a[i * n + k + 1 + n] * b[(k + 1) * p + j];
                     }
-                  c(indc1 + i, indc2 + j) += s00;
-                  c(indc1 + i, indc2 + j + p) += s10;
+                  c[i * p + j    ] += s00;
+                  c[i * p + j + p] += s10;
                 }
               else   // m3 = 2
                 {
                   for (k = 0; k < n; ++k)
                     {
-                      s00 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j);
-                      s01 += a(inda1 + i, inda2 + k)
-                           * b(indb1 + k, indb2 + j + 1);
-                      s10 += a(inda1 + i, inda2 + k + n)
-                           * b(indb1 + k, indb2 + j);
-                      s11 += a(inda1 + i, inda2 + k + n)
-                           * b(indb1 + k, indb2 + j + 1);
+                      s00 += a[i * n + k    ] * b[k * p + j    ];
+                      s01 += a[i * n + k    ] * b[k * p + j + 1];
+                      s10 += a[i * n + k + n] * b[k * p + j    ];
+                      s11 += a[i * n + k + n] * b[k * p + j + 1];
                     }
-                  c(indc1 + i, indc2 + j) += s00;
-                  c(indc1 + i, indc2 + j + 1) += s01;
-                  c(indc1 + i, indc2 + j + p) += s10;
-                  c(indc1 + i, indc2 + j + p + 1) += s11;
+                  c[i * p + j        ] += s00;
+                  c[i * p + j + 1    ] += s01;
+                  c[i * p + j + p    ] += s10;
+                  c[i * p + j + p + 1] += s11;
                 }
             }
         }
@@ -332,11 +310,21 @@ void *mult_matrix_matrix (void *pargs)
     return 0; 
 
   size_t a_rows = a.get_n_rows();
-  size_t b_cols = b.get_n_cols();
   size_t a_cols = a.get_n_cols();
+  size_t b_cols = b.get_n_cols();
+
+  if (thread_num == 0)
+    c.set_to_zero();
+  synchronize_threads(total_threads);
+
 #if BLOCK_MULT
   size_t m = BLOCK_SIZE, n_blocks = (a_rows + m - 1) / m;
   size_t i, j, k, m1, m2, m3, first_block, last_block, i_block;
+
+  double *my_a = new double [m * m];
+  double *my_b = new double [m * m];
+  double *my_c = new double [m * m];
+
   // loop over matrix rows
   calc_thread_own_items (total_threads, thread_num, n_blocks,
                          first_block, last_block);
@@ -357,10 +345,29 @@ void *mult_matrix_matrix (void *pargs)
             {
               m2 = (a_cols - k < m) ? a_cols - k : m;
               // cols(a_{i,k}) = rows(b_{k,j}) = m2
-              multiply_and_add_blocks(a, b, c, i, j, k, m1, m2, m3);
+              size_t p, q;
+              // fill my_a (m1 x m2)
+              for (p = 0; p < m1; ++p)
+                for (q = 0; q < m2; ++q)
+                  my_a[p * m2 + q] = a(i + p, k + q);
+              // fill my_b (m2 x m3)
+              for (p = 0; p < m2; ++p)
+                for (q = 0; q < m3; ++q)
+                  my_b[p * m3 + q] = b(k + p, j + q);
+
+              multiply_and_add_blocks(my_a, my_b, my_c, m1, m2, m3);
+
+              // write answer in c
+              for (p = 0; p < m1; ++p)
+                for (q = 0; q < m3; ++q)
+                  c(i + p, j + q) += my_c[p * m3 + q];
             }
         }
     }
+
+  delete [] my_a;
+  delete [] my_b;
+  delete [] my_c;
 #else
   size_t first_row, last_row; 
   calc_thread_own_items (total_threads, thread_num, a_rows,

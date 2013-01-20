@@ -51,9 +51,10 @@ int main (int argc, char *argv[])
       {
         // on what place in array should A_{i,j} be
         A.set_index(i, j, i * m + j);
-        A(i, j) = i + j;
+        A(i, j) = 0.1 * (i + j);
       }
 #if PRINT
+  cout << "A:" << endl;
   cout << A << endl;
 #endif
 
@@ -61,9 +62,10 @@ int main (int argc, char *argv[])
     for (size_t j = 0; j < p; ++j)
       {
         B.set_index(i, j, p * m - 1 - (i * p + j));
-        B(i, j) = i + j;
+        B(i, j) = 0.2 * (i + j);
       }
 #if PRINT
+  cout << "B:" << endl;
   cout << B << endl;
 #endif
 
@@ -102,6 +104,7 @@ int main (int argc, char *argv[])
 
   // print answer
 #if PRINT
+  cout << "C:" << endl;
   cout << C << endl;
 #endif
   FILE *fp = fopen (argv[3], "a");
